@@ -11,7 +11,7 @@ struct SignedPreviewView: View {
         NavigationStack {
             ReadOnlyPDFView(url: file.url)
                 .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("Signed Copy")
+                .navigationTitle(file.isSigned ? "Signed Copy" : "PDF Copy")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

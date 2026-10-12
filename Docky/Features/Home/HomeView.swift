@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import VisionKit
 
 struct HomeView: View {
     @State private var isImporterPresented = false
@@ -7,18 +8,43 @@ struct HomeView: View {
     @State private var errorMessage = ""
     @State private var isShowingError = false
     @State private var isShowingSettings = false
+    @State private var isScannerPresented = false
 
     var body: some View {
         NavigationStack {
             ContentUnavailableView {
                 Label("No Documents", systemImage: "doc.text")
             } description: {
-                Text("Open a PDF to sign it, add the date, and fill in your name.")
+                Text("Open a PDF or scan a paper document to sign it, add the date, and fill in your name.")
             } actions: {
                 Button("Open PDF") {
                     isImporterPresented = true
                 }
                 .buttonStyle(.borderedProminent)
+
+                // Hidden on devices without a usable camera, including the Simulator.
+                if VNDocumentCameraViewController.isSupported {
+                    Button("Scan Document", systemImage: "doc.viewfinder") {
+                        isScannerPresented = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .fullScreenCover(isPresented: $isScannerPresented) {
+                DocumentScannerView(
+                    onFinish: { scan in
+                        isScannerPresented = false
+                        openScan(scan)
+                    },
+                    onCancel: {
+                        isScannerPresented = false
+                    },
+                    onError: { error in
+                        isScannerPresented = false
+                        show(error)
+                    }
+                )
+                .ignoresSafeArea()
             }
             .navigationTitle("Docky")
             .toolbar {
@@ -69,6 +95,17 @@ struct HomeView: View {
                 name: url.deletingPathExtension().lastPathComponent,
                 pdf: pdf
             )
+        } catch {
+            show(error)
+        }
+    }
+
+    private func openScan(_ scan: VNDocumentCameraScan) {
+        do {
+            let pdf = try ScannedPDFBuilder.makePDF(from: scan)
+            // e.g. "Scan Oct 12, 2026" (follows the device's region). No "/" or ":", so it's safe as a file name.
+            let date = Date.now.formatted(.dateTime.day().month(.abbreviated).year())
+            openedDocument = OpenedDocument(name: "Scan \(date)", pdf: pdf)
         } catch {
             show(error)
         }

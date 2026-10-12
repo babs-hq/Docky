@@ -83,7 +83,7 @@ struct DocumentViewerView: View {
             .sheet(item: $exportedFile) { file in
                 SignedPreviewView(file: file)
             }
-            .alert("Couldn't Create Signed Copy", isPresented: $isShowingExportError) {
+            .alert("Couldn't Create PDF", isPresented: $isShowingExportError) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(exportErrorMessage)
@@ -146,8 +146,15 @@ struct DocumentViewerView: View {
         Button {
             finish()
         } label: {
-            Label("Finish & Share", systemImage: "checkmark.seal")
-                .frame(maxWidth: .infinity)
+            // Nothing added yet (e.g. a fresh scan): offer a plain PDF instead of a "signed" one.
+            Group {
+                if session.hasFields {
+                    Label("Finish & Share", systemImage: "checkmark.seal")
+                } else {
+                    Label("Save PDF", systemImage: "square.and.arrow.down")
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
@@ -217,8 +224,9 @@ struct DocumentViewerView: View {
         session.pendingContent = nil
 
         do {
-            let url = try SignedPDFExporter.export(session.pdf, named: document.name)
-            exportedFile = ExportedFile(url: url)
+            let isSigned = session.hasFields
+            let url = try SignedPDFExporter.export(session.pdf, named: document.name, isSigned: isSigned)
+            exportedFile = ExportedFile(url: url, isSigned: isSigned)
         } catch {
             exportErrorMessage = error.localizedDescription
             isShowingExportError = true

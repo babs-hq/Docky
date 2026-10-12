@@ -13,6 +13,11 @@ final class SigningSession {
 
     private(set) var selectedField: FieldAnnotation?
 
+    /// How many fields have been placed. Tracked here because SwiftUI can't observe PDFKit's own lists.
+    private(set) var fieldCount = 0
+
+    var hasFields: Bool { fieldCount > 0 }
+
     private let defaultSignatureWidth: CGFloat = 160
     private let defaultInitialsWidth: CGFloat = 60
     private let defaultTextHeight: CGFloat = 18
@@ -37,6 +42,7 @@ final class SigningSession {
 
         field.bounds = frame.clamped(to: pageBounds(page))
         page.addAnnotation(field)
+        fieldCount += 1
         pendingContent = nil
         select(field)
     }
@@ -119,6 +125,7 @@ final class SigningSession {
         field.bounds = .zero
         field.page?.removeAnnotation(field)
         selectedField = nil
+        fieldCount -= 1
     }
 
     // MARK: - Helpers

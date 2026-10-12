@@ -3,13 +3,14 @@ import UIKit
 
 enum SignedPDFExporter {
     /// Writes a flattened copy of `document` to a temporary file and returns its location.
-    /// The original file is never modified.
-    static func export(_ document: PDFDocument, named name: String) throws -> URL {
+    /// The original file is never modified. `isSigned` adds " (Signed)" to the file name.
+    static func export(_ document: PDFDocument, named name: String, isSigned: Bool) throws -> URL {
         // A unique folder per export lets the file keep a friendly name without clashing.
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
-        let fileURL = folder.appending(path: "\(name) (Signed).pdf")
+        let fileName = isSigned ? "\(name) (Signed).pdf" : "\(name).pdf"
+        let fileURL = folder.appending(path: fileName)
         let data = flatten(document, title: name)
         try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
         return fileURL
