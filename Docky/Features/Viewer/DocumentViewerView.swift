@@ -12,6 +12,9 @@ struct DocumentViewerView: View {
     @State private var draftText = ""
     @State private var isEditingDate = false
     @State private var dateToEdit = Date.now
+    @State private var exportedFile: ExportedFile?
+    @State private var exportErrorMessage = ""
+    @State private var isShowingExportError = false
 
     /// The kinds of text the user can be asked to type.
     private enum TextPrompt {
@@ -50,6 +53,9 @@ struct DocumentViewerView: View {
                     placementBanner(for: content)
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                finishButton
+            }
             .navigationTitle(document.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
@@ -72,6 +78,14 @@ struct DocumentViewerView: View {
                 Button(prompt.confirmLabel) {
                     submitText(for: prompt)
                 }
+            }
+            .sheet(item: $exportedFile) { file in
+                SignedPreviewView(file: file)
+            }
+            .alert("Couldn't Create Signed Copy", isPresented: $isShowingExportError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportErrorMessage)
             }
     }
 
@@ -117,6 +131,23 @@ struct DocumentViewerView: View {
         }
     }
 
+    // MARK: - Finish button
+
+    /// Lives outside the toolbar because toolbar buttons show only their icon,
+    /// and the screen's main action needs its words.
+    private var finishButton: some View {
+        Button {
+            finish()
+        } label: {
+            Label("Finish & Share", systemImage: "checkmark.seal")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+    }
+
     // MARK: - Placement banner
 
     private func placementBanner(for content: FieldContent) -> some View {
@@ -155,6 +186,20 @@ struct DocumentViewerView: View {
             return
         }
         startPlacing(.image(signature))
+    }
+
+    private func finish() {
+        // Deselect first, or the blue selection border would be flattened into the signed copy.
+        session.select(nil)
+        session.pendingContent = nil
+
+        do {
+            let url = try SignedPDFExporter.export(session.pdf, named: document.name)
+            exportedFile = ExportedFile(url: url)
+        } catch {
+            exportErrorMessage = error.localizedDescription
+            isShowingExportError = true
+        }
     }
 
     private func edit(_ field: FieldAnnotation) {

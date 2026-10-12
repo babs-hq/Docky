@@ -11,12 +11,7 @@ struct PDFKitView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> PDFView {
-        let pdfView = PDFView()
-        pdfView.autoScales = true
-        pdfView.displayMode = .singlePageContinuous
-        pdfView.displayDirection = .vertical
-        pdfView.backgroundColor = .secondarySystemBackground
-        pdfView.document = session.pdf
+        let pdfView = PDFView.makeReader(document: session.pdf)
         context.coordinator.attachGestures(to: pdfView)
         return pdfView
     }
