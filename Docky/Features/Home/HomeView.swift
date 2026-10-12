@@ -35,20 +35,37 @@ struct HomeView: View {
                 Text(errorMessage)
             }
         }
+        // A PDF sent from another app, e.g. Mail → Share → Docky.
+        .onOpenURL { url in
+            open(url)
+        }
     }
 
     private func handleImport(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            open(url)
+        case .failure(let error):
+            show(error)
+        }
+    }
+
+    /// The one place a PDF gets opened, whether it came from the file picker or another app.
+    private func open(_ url: URL) {
         do {
-            let url = try result.get()
             let pdf = try PDFLoader.load(from: url)
             openedDocument = OpenedDocument(
                 name: url.deletingPathExtension().lastPathComponent,
                 pdf: pdf
             )
         } catch {
-            errorMessage = error.localizedDescription
-            isShowingError = true
+            show(error)
         }
+    }
+
+    private func show(_ error: Error) {
+        errorMessage = error.localizedDescription
+        isShowingError = true
     }
 }
 
