@@ -26,7 +26,7 @@ final class FieldAnnotation: PDFAnnotation {
 
     /// The size the content looks right at before scaling. Its shape decides the aspect ratio.
     var naturalSize: CGSize {
-        if case .image(let image) = content {
+        if let image = content.image {
             return image.size
         }
         let textSize = (content.displayText ?? "").size(withAttributes: Self.textAttributes)
@@ -65,13 +65,10 @@ final class FieldAnnotation: PDFAnnotation {
     override func draw(with box: PDFDisplayBox, in context: CGContext) {
         context.saveGState()
 
-        switch content {
-        case .image(let image):
-            if let cgImage = image.cgImage {
-                context.draw(cgImage, in: bounds)
-            }
-        case .text, .date:
-            drawText(content.displayText ?? "", in: context)
+        if let cgImage = content.image?.cgImage {
+            context.draw(cgImage, in: bounds)
+        } else if let text = content.displayText {
+            drawText(text, in: context)
         }
 
         if isSelected {

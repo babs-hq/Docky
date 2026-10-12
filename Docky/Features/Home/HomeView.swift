@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var openedDocument: OpenedDocument?
     @State private var errorMessage = ""
     @State private var isShowingError = false
+    @State private var isShowingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -20,6 +21,16 @@ struct HomeView: View {
                 .buttonStyle(.borderedProminent)
             }
             .navigationTitle("Docky")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Settings", systemImage: "gearshape") {
+                        isShowingSettings = true
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsView()
+            }
             .fileImporter(
                 isPresented: $isImporterPresented,
                 allowedContentTypes: [.pdf]
@@ -72,4 +83,5 @@ struct HomeView: View {
 #Preview {
     HomeView()
         .environment(SignatureStore())
+        .environment(SignatureLock())
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import PencilKit
 
 struct SignaturePadView: View {
+    var title = "Draw Signature"
     var onSave: (UIImage) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -39,7 +40,7 @@ struct SignaturePadView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Draw Signature")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

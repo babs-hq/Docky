@@ -13,7 +13,8 @@ final class SigningSession {
 
     private(set) var selectedField: FieldAnnotation?
 
-    private let defaultImageWidth: CGFloat = 160
+    private let defaultSignatureWidth: CGFloat = 160
+    private let defaultInitialsWidth: CGFloat = 60
     private let defaultTextHeight: CGFloat = 18
     private let minimumFieldWidth: CGFloat = 24
     private let minimumFieldHeight: CGFloat = 8
@@ -40,13 +41,17 @@ final class SigningSession {
         select(field)
     }
 
-    /// Signatures start at a fixed width; text starts at a fixed height (roughly 12pt type).
+    /// Drawings start at a fixed width; text and checkmarks start at a fixed height (roughly 12pt type).
     private func defaultSize(for field: FieldAnnotation) -> CGSize {
         let ratio = field.aspectRatio
-        if case .image = field.content {
-            return CGSize(width: defaultImageWidth, height: defaultImageWidth / ratio)
+        switch field.content {
+        case .signature:
+            return CGSize(width: defaultSignatureWidth, height: defaultSignatureWidth / ratio)
+        case .initials:
+            return CGSize(width: defaultInitialsWidth, height: defaultInitialsWidth / ratio)
+        case .text, .date, .checkmark:
+            return CGSize(width: defaultTextHeight * ratio, height: defaultTextHeight)
         }
-        return CGSize(width: defaultTextHeight * ratio, height: defaultTextHeight)
     }
 
     // MARK: - Selecting

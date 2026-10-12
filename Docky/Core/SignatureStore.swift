@@ -7,43 +7,74 @@ enum SignatureStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .encodingFailed:
-            "The signature couldn't be converted to an image."
+            "The drawing couldn't be converted to an image."
         }
     }
 }
 
-/// Saves the user's signature on this device so it can be reused on any document.
-@Observable
-final class SignatureStore {
-    private(set) var signature: UIImage?
+/// The handwritten marks a user can save and reuse.
+enum SignatureKind: String, CaseIterable, Identifiable {
+    case signature
+    case initials
 
-    private let fileURL: URL
+    var id: Self { self }
 
-    init(directory: URL = .applicationSupportDirectory) {
-        fileURL = directory.appending(path: "signature.png")
-        // percentEncoded: false keeps spaces as spaces ("Application Support"), not "%20".
-        signature = UIImage(contentsOfFile: fileURL.path(percentEncoded: false))
+    var title: String {
+        switch self {
+        case .signature: "Signature"
+        case .initials: "Initials"
+        }
     }
 
-    func save(_ image: UIImage) throws {
+    /// "signature.png" keeps the same name as before, so existing saved signatures still load.
+    var fileName: String {
+        "\(rawValue).png"
+    }
+}
+
+/// Saves the user's signature and initials on this device so they can be reused on any document.
+@Observable
+final class SignatureStore {
+    private(set) var images: [SignatureKind: UIImage] = [:]
+
+    private let directory: URL
+
+    init(directory: URL = .applicationSupportDirectory) {
+        self.directory = directory
+        for kind in SignatureKind.allCases {
+            // percentEncoded: false keeps spaces as spaces ("Application Support"), not "%20".
+            images[kind] = UIImage(contentsOfFile: fileURL(for: kind).path(percentEncoded: false))
+        }
+    }
+
+    var signature: UIImage? { images[.signature] }
+    var initials: UIImage? { images[.initials] }
+
+    func image(for kind: SignatureKind) -> UIImage? {
+        images[kind]
+    }
+
+    func save(_ image: UIImage, as kind: SignatureKind) throws {
         guard let data = image.pngData() else {
             throw SignatureStoreError.encodingFailed
         }
 
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         // Encrypted on disk and unreadable while the device is locked.
-        try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        try data.write(to: fileURL(for: kind), options: [.atomic, .completeFileProtection])
 
-        signature = image
+        images[kind] = image
     }
 
-    func delete() throws {
-        if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
-            try FileManager.default.removeItem(at: fileURL)
+    func delete(_ kind: SignatureKind) throws {
+        let url = fileURL(for: kind)
+        if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: url)
         }
-        signature = nil
+        images[kind] = nil
+    }
+
+    private func fileURL(for kind: SignatureKind) -> URL {
+        directory.appending(path: kind.fileName)
     }
 }

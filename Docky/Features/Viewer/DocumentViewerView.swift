@@ -4,6 +4,7 @@ struct DocumentViewerView: View {
     let document: OpenedDocument
 
     @Environment(SignatureStore.self) private var signatureStore
+    @Environment(SignatureLock.self) private var signatureLock
     @AppStorage("fullName") private var savedName = ""
 
     @State private var session: SigningSession
@@ -99,7 +100,7 @@ struct DocumentViewerView: View {
                     session.deleteSelectedField()
                 }
             }
-            if field.content.displayText != nil {
+            if field.content.isEditable {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Edit", systemImage: "pencil") {
                         edit(field)
@@ -110,7 +111,10 @@ struct DocumentViewerView: View {
         ToolbarItem(placement: .primaryAction) {
             Menu("Add Field", systemImage: "plus.circle") {
                 Button("Signature", systemImage: "signature") {
-                    addSignature()
+                    addDrawing(.signature)
+                }
+                Button("Initials", systemImage: "pencil.line") {
+                    addDrawing(.initials)
                 }
                 Button("Name", systemImage: "person") {
                     draftText = savedName
@@ -123,9 +127,12 @@ struct DocumentViewerView: View {
                     draftText = ""
                     textPrompt = .text
                 }
+                Button("Checkmark", systemImage: "checkmark.square") {
+                    startPlacing(.checkmark)
+                }
                 Divider()
-                Button("Manage Signature", systemImage: "pencil.and.scribble") {
-                    isShowingSignature = true
+                Button("Signature & Initials", systemImage: "pencil.and.scribble") {
+                    manageSignature()
                 }
             }
         }
@@ -166,9 +173,11 @@ struct DocumentViewerView: View {
 
     private func placementMessage(for content: FieldContent) -> String {
         switch content {
-        case .image: "Tap where you want to sign"
+        case .signature: "Tap where you want to sign"
+        case .initials: "Tap where your initials should go"
         case .text: "Tap where the text should go"
         case .date: "Tap where the date should go"
+        case .checkmark: "Tap the box to tick"
         }
     }
 
@@ -179,13 +188,27 @@ struct DocumentViewerView: View {
         session.pendingContent = content
     }
 
-    private func addSignature() {
-        guard let signature = signatureStore.signature else {
-            // No saved signature yet: ask the user to draw one first.
-            isShowingSignature = true
-            return
+    /// Places the saved signature or initials, asking for Face ID first if the lock is on.
+    private func addDrawing(_ kind: SignatureKind) {
+        Task {
+            guard await signatureLock.unlock() else { return }
+            guard let image = signatureStore.image(for: kind) else {
+                // Nothing saved yet: ask the user to draw it first.
+                isShowingSignature = true
+                return
+            }
+            switch kind {
+            case .signature: startPlacing(.signature(image))
+            case .initials: startPlacing(.initials(image))
+            }
         }
-        startPlacing(.image(signature))
+    }
+
+    private func manageSignature() {
+        Task {
+            guard await signatureLock.unlock() else { return }
+            isShowingSignature = true
+        }
     }
 
     private func finish() {
@@ -204,7 +227,7 @@ struct DocumentViewerView: View {
 
     private func edit(_ field: FieldAnnotation) {
         switch field.content {
-        case .image:
+        case .signature, .initials, .checkmark:
             break
         case .text(let text):
             draftText = text
